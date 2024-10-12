@@ -1,4 +1,5 @@
-# Testad med Python 3.12.5 och python-nmap 0.7.1
+#!/usr/bin/python3
+# Testad med Python 3.12.5 och python-nmap 0.7.1 på Windows 11
 
 from os import path
 import nmap
