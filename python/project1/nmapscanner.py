@@ -1,32 +1,18 @@
-#!/usr/bin/env python3
-
-"""
-    Labb 1:
-
-Kan göras enskilt eller i grupp. Om ni jobbar i grupp, använd gärna git(github) för att jobba tillsammans.
-
-Installera python-nmap via PIP.
-
-Skriv ett eget verktyg som använder nmap för att skanna ip adresser.
-
-Krav:
-
-    Möjlighet att spara resultatet av skanningen till fil (.txt)
-    Använd input/fil för att bestämma vilka ip-adresser som ska skannas
-    Programmet ska ha en meny där användaren kan välja vad som ska göras.
-
-
-Använd din fantasi för att skapa fler funktioner i verktyget.
-
-Skicka in skriptet, antingen via Github länk eller som en .py fil.
-Notera gärna om scriptet har testats på Windows, Linux eller Mac.
-Notera om du arbetat i grupp - Skriv alla namn på deltagare i gruppen
-"""
-
-
 from os import path
 import nmap
+import re
 
+def printBanner():
+    banner = """
+██╗   ██╗██╗███╗   ██╗███████╗
+██║   ██║██║████╗  ██║██╔════╝
+██║   ██║██║██╔██╗ ██║███████╗
+╚██╗ ██╔╝██║██║╚██╗██║╚════██║
+ ╚████╔╝ ██║██║ ╚████║███████║
+  ╚═══╝  ╚═╝╚═╝  ╚═══╝╚══════╝
+ Very Inferior Network Scanner
+"""
+    print(banner)
 
 NMAP_SCAN_TYPE = {
     "-sS": "Use SYN scan (stealth)",
@@ -39,136 +25,143 @@ NMAP_SCAN_FLAG = {
     "-Pn": "Disable ping scan"
 }
 
+def is_valid_ip(ip: str) -> bool:
+    pattern = r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$"
+    if re.match(pattern, ip):
+        return all(0 <= int(part) <= 255 for part in ip.split('.'))
+    return False
+
+def is_valid_ports(ports: str) -> bool:
+    pattern = r"^(\d+(-\d+)?)( \d+(-\d+)?)*$"
+    return bool(re.match(pattern, ports))
 
 def selectScanType() -> str:
-    print("Scan type:")
+    print("\nSelect scan type:\n")
     for i, scan_type in enumerate(NMAP_SCAN_TYPE):
         print(f"     {i}) {scan_type}: {NMAP_SCAN_TYPE[scan_type]}")
     
     while True:
         try:
+            print()
             n_option = int(input(f"Option 0-{len(NMAP_SCAN_TYPE) - 1}: "))
-            
             if 0 <= n_option < len(NMAP_SCAN_TYPE):
-                option = list(NMAP_SCAN_TYPE.keys())[n_option]
-                return option
+                return list(NMAP_SCAN_TYPE.keys())[n_option]
             else:
                 print("Invalid option, try again.")
         except ValueError:
             print("Please enter a valid number.")
 
-
-def getScanOptions():
-    print("Scan options:")
+def getScanOptions() -> str:
+    print("\nSelect scan options:\n")
     for i, scan_flag in enumerate(NMAP_SCAN_FLAG):
         print(f"     {i}) {scan_flag}: {NMAP_SCAN_FLAG[scan_flag]}")
+    
     flags = []
-    option = "."
-
-    while option != "":
-        option = input(f"Flag (enter to finish): ")
-        if option in NMAP_SCAN_FLAG.keys():
+    while True:
+        print()
+        option = input("Flag (enter to finish): ").strip()
+        if option == "":
+            break
+        if option in NMAP_SCAN_FLAG:
             flags.append(option)
         else:
             print("Invalid flag.")
+    return " ".join(flags)
 
 def nmapScan():
     nm = nmap.PortScanner()
     
+    print("\n-------------------------")
     write_file = yesNo("Write to file?")
     if write_file: 
+        print()
         output_filename = input("Filename: ")
-    if path.exists(output_filename):
-        if not askOverwrite(output_filename):
-            return
+        if path.exists(output_filename):
+            if not yesNo("File exists. Append to file?"):
+                if not askOverwrite(output_filename):
+                    return
     
+    print("\n-------------------------")
     load_from_file = yesNo("Load IPs from file?")
     if load_from_file:
-        while True:
+        print()
+        ips_filename = input("Filename: ")
+        while not path.exists(ips_filename):
+            print("File not found.")
             ips_filename = input("Filename: ")
-            if path.exists(ips_filename):
-                break
-            else:
-                print("File not found.")
-        ips = getAdresssesFromFile(ips_filename)
-    
+        ips = getAddressesFromFile(ips_filename)
+    else:
+        print()
+        ips = [input("Enter IP: ").strip()]
+        while not is_valid_ip(ips[0]):
+            print("Invalid IP address.")
+            ips = [input("Enter valid IP: ").strip()]
+
+    print("\n-------------------------")
     ports = getPortRange()
     scan_type = selectScanType()
     flags = getScanOptions()
     
-    if load_from_file:
-        for ip in ips:
-            nm.scan(ip, ports, arguments=f"{scan_type} {flags}")
-    else:
-        ip = input("IP: ")
-        nm.scan(ip, ports, arguments=f"{scan_type} {flags}")
-    output_file = open(output_filename, "w")
-    if write_file: output_file.write(ip)
-    
     file_output = ""
-    #credd chatgpt för denna del
-    for proto in nm[ip].all_protocols():
-        ports = nm[ip][proto].keys()
-        
-        for port in ports:
-            state = nm[ip][proto][port]['state']
-            name = nm[ip][proto][port]['name']
-            product = nm[ip][proto][port].get('product', 'Unknown')
-            version = nm[ip][proto][port].get('version', 'Unknown')
-            
-            if state == 'open':
-                output = f"Port: {port}, Service: {name}, Product: {product}, Version: {version}"
-                file_output += output
-                
+    
+    for ip in ips:
+        print(f"\nScanning {ip}...\n")
+        try:
+            nm.scan(ip, ports, arguments=f"{scan_type} {flags}")
+            if nm[ip].all_protocols():
+                result = f"\n{'-'*40}\nResults for IP: {ip}\n{'-'*40}\n"
+                for proto in nm[ip].all_protocols():
+                    ports = nm[ip][proto].keys()
+                    for port in ports:
+                        state = nm[ip][proto][port]['state']
+                        name = nm[ip][proto][port].get('name', 'Unknown')
+                        product = nm[ip][proto][port].get('product', 'Unknown')
+                        version = nm[ip][proto][port].get('version', 'Unknown')
+                        
+                        if state == 'open':
+                            result += f"Port: {port}, Service: {name}, Product: {product}, Version: {version}\n"
+                print(result)
+                file_output += result
+            else:
+                print(f"No open protocols found for {ip}")
+        except Exception as e:
+            print(f"Error scanning {ip}: {e}")
+
     if write_file:
-        writeResultToFile(file_output)
-        
-        
+        writeResultToFile(output_filename, file_output)
+
+
 def getPortRange() -> str:
-    print("Enter port: 21")
-    print("a range of ports: 1-1024")
-    print("or a list of ports, separated by space: 21 80 443")
-    ports = input(": ")
-    
-    return ports
-    
-    
+    print("\nEnter a single port: 21")
+    print("or a range of ports: 1-1024")
+    print("or a list of ports, separated by spaces: 21 80 443\n")
+    while True:
+        ports = input(": ")
+        if is_valid_ports(ports):
+            return ports
+        print("Invalid port format. Please try again.")
 
-def getAdresssesFromFile(file) -> list:
+def getAddressesFromFile(file) -> list:
     ips = []
-    
     with open(file, "r") as ip_file:
-        
-        for ip in ip_file:
-            ips.append(ip.rstrip())
-
+        ips = [ip.strip() for ip in ip_file if is_valid_ip(ip.strip())]
     return ips
 
-
-
 def writeResultToFile(filename, content):
-    if path.exists(filename):
-        askOverwrite(filename)
-        
-    with open(filename, "w") as file:
+    with open(filename, "a") as file:
         file.write(content)
 
-
-def askOverwrite(filename):
-    if not yesNo(f"{filename} already exists. Overwrite?"):
-        return False
-    return True
-
+def askOverwrite(filename) -> bool:
+    return yesNo(f"{filename} already exists. Overwrite?")
 
 def yesNo(prompt) -> bool:
-    
     while True:
+        print()
         user_input = input(f"{prompt} (y/n): ").strip().lower()
-        
         if user_input and user_input[0] in ("y", "n"):
             return user_input[0] == "y"
-        
         print("Invalid input.")
 
-
-nmapScan()
+if __name__ == "__main__":
+    printBanner()
+    nmapScan()
