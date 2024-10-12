@@ -1,3 +1,5 @@
+# Testad med Python 3.12.5 och python-nmap 0.7.1
+
 from os import path
 import nmap
 import re
