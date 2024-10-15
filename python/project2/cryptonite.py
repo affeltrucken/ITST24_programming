@@ -17,8 +17,8 @@ Skapa ett script som krypterar shellcode och sedan genererar en nyckel och  kryp
 
 from cryptography.fernet import Fernet
 from cryptography.fernet import InvalidToken
-import cryptonite_parser
-import cryptonite_gui
+import parser
+import gui
 from pathlib import Path
 
 def readFile(filename: str) -> str:
