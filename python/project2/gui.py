@@ -26,20 +26,22 @@ def menu() -> None:
         print(f"{option}: {options[option]}")
     print()
     
-    option = int(input("> "))
+    option = input("> ")
     match option:
-        case 0:
+        case "0":
             exit()
-        case 1:
+        case "1":
             cryptonite.encrypt_phrase()
-        case 2:
+        case "2":
             cryptonite.encrypt_file()
-        case 3:
+        case "3":
             cryptonite.decrypt_phrase()
-        case 4:
+        case "4":
             cryptonite.decrypt_file()
-        case 5:
+        case "5":
             cryptonite.generate_key()
+        case _:
+            pass
             
 
 def main():

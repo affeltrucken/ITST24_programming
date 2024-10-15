@@ -11,7 +11,7 @@ def menu():
             print("Not a valid number.")
     
     for i in range(0, n_of_keys):
-        str_key = generate_key()
+        str_key = generate_key(ask_save_bool=True)
         encryption_keys.append(str_key)
     
     for key in encryption_keys:

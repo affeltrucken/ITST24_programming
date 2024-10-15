@@ -1,12 +1,5 @@
 
 """Kryptering och Dekryptering:
-
-Implementera ett andra skript (ex crypto_tool.py) som använder argparse för att hantera kommandoradsalternativ och utföra följande funktioner:
-Kryptera en fil med en befintlig nyckel.
-Dekryptera en krypterad fil och återställa originalet.
-
-Förslag på extrafunktioner (frivilligt):
-
 Implementera felhantering för fil om den saknas
 Lägg till funktionalitet för att skapa en lösenordsbaserad nyckel med hjälp av PBKDF2.
 
@@ -17,18 +10,22 @@ Skapa ett script som krypterar shellcode och sedan genererar en nyckel och  kryp
 
 from cryptography.fernet import Fernet
 from cryptography.fernet import InvalidToken
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
 import parser
 import gui
 from pathlib import Path
+import base64
 
 def readFile(filename: str) -> str:
     with open(filename, "r") as file:
         return file.read()
 
-def generate_key():
+def generate_key(ask_save_bool=False):
     key = Fernet.generate_key().decode()
     print(f"Generated key: {key}")
-    ask_save(key)
+    if ask_save_bool: ask_save(key)
     return key
 
 def write_to_file(filename: str, data: str, mode = "a"):
@@ -74,6 +71,8 @@ def enter_filename() -> str:
             return filename
 
 def ask_key() -> bytes:
+    if yes_no("Generate key?"):
+        return bytes(generate_key(), "ascii")
     if yes_no("Load key from file?"):
         while True:
             filename = input("Filename: ")
@@ -91,13 +90,14 @@ def ask_key() -> bytes:
     return bytes(key, "ascii")
 
 def encrypt_data(data: str, key: bytes) -> bytes:
+    data = bytes(data, "utf-8")
     key = validate_key(key)
     fernet = Fernet(key)
     encrypted_data = fernet.encrypt(data)
     return encrypted_data
 
 
-def decrypt_data(data: str, key: bytes) -> bytes:
+def decrypt_data(data: str, key: bytes, ask_save_bool=False) -> bytes:
     fernet = Fernet(key)
     try:
         decrypted_data = fernet.decrypt(data).decode()
@@ -105,16 +105,19 @@ def decrypt_data(data: str, key: bytes) -> bytes:
         print("Invalid data. Decryption failed.")
         return
     print(f"Output: {decrypted_data}")
-    ask_save(decrypted_data)
+    if ask_save_bool: ask_save(decrypted_data)
     return decrypted_data
 
-def encrypt_phrase() -> bytes:
-    if yes_no("Do you want to generate a key?"):
-        key = generate_key()
-    else:
+def encrypt_phrase(phrase="", key="") -> bytes:
+    if not key:
         key = ask_key()
-    phrase = bytes(input("Enter phrase to encrypt: "), "utf-8")
-    encrypted_data = encrypt_data(phrase, key)
+    else:
+        validate_key(key)
+        
+    if not phrase:
+        data = input("Enter phrase to encrypt: ")
+        
+    encrypted_data = encrypt_data(data, key)
     print(encrypted_data.decode().strip())
     print()
     
@@ -123,40 +126,55 @@ def encrypt_phrase() -> bytes:
         write_to_file(f"{filename}.encrypted", encrypted_data.decode(), "w")
     return encrypted_data
         
-def encrypt_file() -> bytes:
-    if yes_no("Do you want to generate a key?"):
-        key = generate_key()
-    else:
-        key = ask_key()
+def encrypt_file(filename="", key="") -> bytes:
+    if not key:
+        if yes_no("Do you want to generate a key?"):
+            key = generate_key()
+        else:
+            key = ask_key()
     while True:
-        filename = input("Filename: ")
-        if Path(filename).exists():
+        if not filename:
+            filename = input("Filename: ")
+        else:
             break
+        if Path(filename).exists():
+            break 
         print("File not found. Try again.")
+        filename = ""
     
     file_data = bytes(readFile(filename), "utf-8")
     encrypted_file_data = encrypt_data(file_data, key)
     write_to_file(f"{filename}.encrypted", encrypted_file_data.decode(), "w")
     print(f"Written to {filename}.\n")
 
-def decrypt_phrase() -> bytes:
-    key = ask_key()
-    encrypted_data = input("Enter encrypted phrase: ")
-    decrypted_data = decrypt_data(encrypted_data, key)
+def decrypt_phrase(phrase="", key="", ask_save_bool=False) -> bytes:
+    key = input("Key: ")
+    
+    while not validate_key(key):
+        key = input("Key: ")
+                
+    if not phrase:
+        encrypted_data = input("Enter encrypted phrase: ")
+    
+    decrypted_data = decrypt_data(encrypted_data, key, ask_save_bool)
     
     if yes_no("Save to file?"):
         filename = input("Filename: ")
         write_to_file(f"{filename}.decrypted", decrypted_data.decode(), "w")
     return decrypted_data
 
-def decrypt_file() -> bytes:
+def decrypt_file(filename="") -> bytes:
     key = ask_key()
-    
+
     while True:
-        filename = input("Filename: ")
-        if Path(filename).exists():
+        if not filename:
+            filename = input("Filename: ")
+        else:
             break
+        if Path(filename).exists():
+            break 
         print("File not found. Try again.")
+        filename = ""
     encrypted_data = readFile(filename)
     decrypted_data = decrypt_data(encrypted_data, key)
     
@@ -166,9 +184,19 @@ def decrypt_file() -> bytes:
     
     return decrypted_data
 
+def generate_key_from_password(password: str, salt: bytes, iterations: int = 100000):
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,  # Length of the key (32 bytes for AES-256)
+        salt=salt,
+        iterations=iterations,
+        backend=default_backend()
+    )
+    key = base64.urlsafe_b64encode(kdf.derive(password.encode()))
+    return key
+
 def main():
-    cryptonite_parser.main()
-    cryptonite_gui.main()
+    parser.main()
     
 if __name__ == "__main__":
     main()
