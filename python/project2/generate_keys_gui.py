@@ -1,7 +1,4 @@
-from cryptonite import yes_no
-from cryptonite import write_to_file
-from cryptonite import enter_filename
-from cryptonite import generate_key
+from cryptonite import yes_no, write_to_file, enter_filename, generate_key
 
 def menu():
     encryption_keys = []
