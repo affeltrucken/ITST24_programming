@@ -1,20 +1,10 @@
-
-"""Kryptering och Dekryptering:
-Implementera felhantering för fil om den saknas
-Lägg till funktionalitet för att skapa en lösenordsbaserad nyckel med hjälp av PBKDF2.
-
-Avancerat alternativ:
-Skapa ett script som krypterar shellcode och sedan genererar en nyckel och  krypterad shellcode som char arrays för användning i C. Nyckeln ska sedan kunna användas för att dekryptera shellcoden i ett c-program
-(vi kommer göra detta i en framtida kurs)
-"""
-
 from cryptography.fernet import Fernet
 from cryptography.fernet import InvalidToken
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 import parser
-import gui
+from os import urandom
 from pathlib import Path
 import base64
 
@@ -89,8 +79,7 @@ def ask_key() -> bytes:
     
     return bytes(key, "ascii")
 
-def encrypt_data(data: str, key: bytes) -> bytes:
-    data = bytes(data, "utf-8")
+def encrypt_data(data: bytes, key: bytes) -> bytes:
     key = validate_key(key)
     fernet = Fernet(key)
     encrypted_data = fernet.encrypt(data)
@@ -109,6 +98,7 @@ def decrypt_data(data: str, key: bytes, ask_save_bool=False) -> bytes:
     return decrypted_data
 
 def encrypt_phrase(phrase="", key="") -> bytes:
+    phrase = phrase.encode("utf-8")
     if not key:
         key = ask_key()
     else:
@@ -117,7 +107,7 @@ def encrypt_phrase(phrase="", key="") -> bytes:
     if not phrase:
         data = input("Enter phrase to encrypt: ")
         
-    encrypted_data = encrypt_data(data, key)
+    encrypted_data = encrypt_data(data.encode("utf-8"), key)
     print(encrypted_data.decode().strip())
     print()
     
@@ -156,7 +146,7 @@ def decrypt_phrase(phrase="", key="", ask_save_bool=False) -> bytes:
     if not phrase:
         encrypted_data = input("Enter encrypted phrase: ")
     
-    decrypted_data = decrypt_data(encrypted_data, key, ask_save_bool)
+    decrypted_data = decrypt_data(encrypted_data.encode("utf-8"), key, ask_save_bool)
     
     if yes_no("Save to file?"):
         filename = input("Filename: ")
@@ -184,10 +174,36 @@ def decrypt_file(filename="") -> bytes:
     
     return decrypted_data
 
-def generate_key_from_password(password: str, salt: bytes, iterations: int = 100000):
+def valid_hex(string: str) -> str:
+    try:
+        string = bytes.fromhex(string)
+        return string
+    except ValueError:
+        return None
+
+
+def generate_salt(length=16) -> bytes:
+    return urandom(length)
+
+def generate_key_from_password(password="", salt="", iterations: int = 100000) -> bytes:
+    if not password:
+        password = input("Password: ")
+    
+    while not salt:
+        salt = input("Salt (leave empty for random): ")
+        
+        if salt == "":
+            salt = generate_salt()
+            break
+        try:
+            salt = bytes.fromhex(salt)
+        except ValueError:
+            print(f"Error. Salt needs to be in hex, like so, a3f5c4e2d4f9a2b3c4d5e6f7a9f0a1b2")
+            salt = ""
+            
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
-        length=32,  # Length of the key (32 bytes for AES-256)
+        length=32,
         salt=salt,
         iterations=iterations,
         backend=default_backend()

@@ -2,7 +2,6 @@ import argparse
 import cryptonite
 import gui
 from cryptography.fernet import InvalidToken
-from os import urandom
 from pathlib import Path
 from sys import argv
 
@@ -10,6 +9,8 @@ ERROR_MISSING_DATA_OR_FILE = "You must provide either 'data' or use the -f/--fil
 ERROR_MISSING_ENCRYPT_OR_DECRYPT = "You must provide the -e/--encrypt or -d/--decrypt option for data."
 ERROR_MISSING_KEY = "You must supply a key for encryption/decryption using -k/--key, or generate one using -g."
 ERROR_BOTH_ENCRYPT_AND_DECRYPT = "You must provide either --encrypt, or --decrypt, not both."
+ERROR_INVALID_SALT = "Salt must be hex"
+
 def add_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="Cryptonite",
@@ -25,6 +26,8 @@ def add_parser() -> argparse.ArgumentParser:
     parser.add_argument("-d", "--decrypt", action="store_true")
     parser.add_argument("-g", "--generate-key", action="store_true", help="Generate Fernet key")
     parser.add_argument("-p", "--password", help="Password for generating a key using PBKDF2")
+    parser.add_argument("--salt", help="Optional salt for key generation in hex format", type=str)
+
     return parser
 
 def validate_args(parser):
@@ -40,14 +43,24 @@ def validate_args(parser):
         parser.error("You must provide data using 'data' argument or --file when using --encrypt.")
 
     key = None
-    if args.generate_key:
-        key = cryptonite.generate_key()
-    elif args.password:
-        salt = urandom(16)
-        key = cryptonite.generate_key_from_password(args.password, salt)
+    if args.password:
+        if args.salt:
+            salt_hex = cryptonite.valid_hex(args.salt)
+            if salt_hex:
+                key = cryptonite.generate_key_from_password(args.password, salt_hex)
+            else:
+                parser.error(ERROR_INVALID_SALT)
+                exit()
+        else:       
+            salt_hex = cryptonite.generate_salt()
+            print(f"Randomised salt: {salt_hex.hex()}")
+            
+        key = cryptonite.generate_key_from_password(args.password, salt_hex).decode("ascii")
+        
+        
     else:
         key = args.key
-
+        
     if args.file:
         data = args.file.read_text(encoding="utf-8")
     elif args.data:

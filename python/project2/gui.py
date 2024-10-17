@@ -18,7 +18,8 @@ def menu() -> None:
         2: "Encrypt file",
         3: "Decrypt phrase",
         4: "Decrypt file",
-        5: "Generate key"
+        5: "Generate random key",
+        6: "Generate key from password (PBKDF2)"
     }
     
     print()
@@ -40,6 +41,9 @@ def menu() -> None:
             cryptonite.decrypt_file()
         case "5":
             cryptonite.generate_key()
+        case "6":
+            key = cryptonite.generate_key_from_password().decode("ascii")
+            print(key)
         case _:
             pass
             
