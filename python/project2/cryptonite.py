@@ -139,7 +139,9 @@ def generate_key_from_password(password="", salt=None, iterations: int = 100000)
         password = input("Password: ")
     if not salt:
         salt = nacl.utils.random(16)  # Generate random 16-byte salt
-    return argon2id.kdf(nacl.secret.SecretBox.KEY_SIZE, password.encode(), salt, opslimit=4, memlimit=1024*1024)
+    key = argon2id.kdf(nacl.secret.SecretBox.KEY_SIZE, password.encode(), salt, opslimit=4, memlimit=1024*1024)
+    print(key.hex())
+    return key
 
 def valid_hex(string: str) -> bool:
     try:

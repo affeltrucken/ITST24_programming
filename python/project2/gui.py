@@ -43,8 +43,7 @@ def menu() -> None:
         case "5":
             cryptonite.generate_key()
         case "6":
-            key = cryptonite.generate_key_from_password().decode("ascii")
-            print(key)
+            key = cryptonite.generate_key_from_password()
         case "7":
             cryptonite.shellcode_c_crypter()
         case _:
