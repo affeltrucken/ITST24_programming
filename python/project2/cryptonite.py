@@ -3,6 +3,13 @@ import nacl.utils
 from nacl.pwhash import argon2id
 from pathlib import Path
 import parser
+import os
+import base64
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+import nacl.secret
+import nacl.utils
 
 def read_file(filename: str) -> bytes:
     with open(filename, "rb") as file:
@@ -150,9 +157,22 @@ def valid_hex(string: str) -> bool:
     except ValueError:
         return False
 
+def generate_salt(length=16):
+    return os.urandom(length)
+
+def generate_key_from_password(password, salt):
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=100000,
+        backend=default_backend()
+    )
+    return base64.urlsafe_b64encode(kdf.derive(password.encode()))
+
 def shellcode_c_crypter(shellcode_file="", key=""):
     if not key:
-        key = generate_key()
+        key = generate_key()  # Ensure we have a key
     if not shellcode_file:
         shellcode_file = input("Filename (binary): ")
 
@@ -222,6 +242,7 @@ int main() {{
 
 """
     return template
+
 
 def main():
     parser.main()

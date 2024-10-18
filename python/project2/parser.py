@@ -27,6 +27,7 @@ def add_parser() -> argparse.ArgumentParser:
     parser.add_argument("-g", "--generate-key", action="store_true", help="Generate Fernet key")
     parser.add_argument("-p", "--password", help="Password for generating a key using PBKDF2")
     parser.add_argument("--salt", help="Optional salt for key generation in hex format", type=str)
+    parser.add_argument("--shellcode-file", type=Path, help="Shellcode file to encrypt")
 
     return parser
 
@@ -57,7 +58,6 @@ def validate_args(parser):
             
         key = cryptonite.generate_key_from_password(args.password, salt_hex).decode("ascii")
         
-        
     else:
         key = args.key
         
@@ -74,9 +74,10 @@ def validate_args(parser):
         "encrypt": args.encrypt,
         "decrypt": args.decrypt,
         "save_output": args.save_output,
-        "interface": args.interface 
+        "interface": args.interface,
+        "shellcode_file": args.shellcode_file
     }
-    
+
 def main():
     parser = add_parser()
     args = parser.parse_args()
@@ -88,9 +89,11 @@ def main():
         
     config = validate_args(parser)
 
-
     if config["encrypt"]:
-        output = cryptonite.encrypt_data(config["data"], config["key"]).decode("utf-8")
+        if config["shellcode_file"]:
+            cryptonite.shellcode_c_crypter(config["shellcode_file"], config["key"])
+        else:
+            output = cryptonite.encrypt_data(config["data"], config["key"]).decode("utf-8")
     elif config["decrypt"]:
         try:
             output = cryptonite.decrypt_data(config["data"], config["key"]).decode("utf-8")
