@@ -1,6 +1,7 @@
 import cryptonite
 
-BANNER = """                         __              _ __     
+BANNER = """\
+                         __              _ __     
   ____________  ______  / /_____  ____  (_) /____ 
  / ___/ ___/ / / / __ \\/ __/ __ \\/ __ \\/ / __/ _ \\
 / /__/ /  / /_/ / /_/ / /_/ /_/ / / / / / /_/  __/
@@ -8,10 +9,10 @@ BANNER = """                         __              _ __
          /____/_/                           v1.0
 
     by Aldin Smajlovic
-""" 
-    
+"""
 
-def menu() -> None:
+def display_menu() -> None:
+    """Displays the menu options."""
     options = {
         0: "Exit",
         1: "Encrypt phrase",
@@ -22,13 +23,14 @@ def menu() -> None:
         6: "Generate key from password (PBKDF2)",
         7: "Shellcode crypter"
     }
-    
+
+    print("\nMenu Options:")
+    for option, description in options.items():
+        print(f"{option}: {description}")
     print()
-    for option in options:
-        print(f"{option}: {options[option]}")
-    print()
-    
-    option = input("> ")
+
+def handle_user_choice(option: str) -> None:
+    """Handles the user's menu choice."""
     match option:
         case "0":
             exit()
@@ -43,18 +45,19 @@ def menu() -> None:
         case "5":
             cryptonite.generate_key()
         case "6":
-            key = cryptonite.generate_key_from_password()
+            cryptonite.generate_key_from_password()
         case "7":
             cryptonite.shellcode_c_crypter()
         case _:
-            pass
-            
+            print("Invalid option. Please try again.")
 
-def main():
+def main() -> None:
+    """Main function to run the console application."""
     print(BANNER)
     while True:
-        menu()
+        display_menu()
+        user_input = input("> ")
+        handle_user_choice(user_input)
 
 if __name__ == "__main__":
     main()
-    
