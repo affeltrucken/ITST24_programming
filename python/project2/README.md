@@ -112,7 +112,6 @@ Follow the prompts to encrypt/decrypt files or phrases, generate keys, and more.
 # License
 
 This project is licensed under the MIT License.
-Contributions
 
 Contributions are welcome! Feel free to open issues or submit pull requests.
 Acknowledgments
