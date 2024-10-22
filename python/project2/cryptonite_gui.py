@@ -13,7 +13,7 @@ BANNER = """                         __              _ __
          /____/_/                           v1.0
 
     by Aldin Smajlovic
-""" 
+"""
 
 def menu() -> None:
     options = {

@@ -27,14 +27,14 @@ def save_keys_to_file(keys: list):
     if yes_no("Save to file?"):
         filename = enter_filename()
         for key in keys:
-            write_to_file(filename, f"{key}\n", "a")
+            write_to_file(filename, f"{key.hex()}\n", "a")
         console.print("\n[green]Success: Keys saved to file.[/green]")
 
 def display_keys(keys: list):
     """Display generated encryption keys."""
     console.print("\n[bold cyan]Generated Keys:[/bold cyan]")
     for key in keys:
-        console.print(f"[bold yellow]{key}[/bold yellow]")
+        console.print(f"[bold yellow]{key.hex()}[/bold yellow]")
 
 def menu():
     """Main menu for generating encryption keys."""

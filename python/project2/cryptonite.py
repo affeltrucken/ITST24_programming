@@ -3,6 +3,7 @@ import nacl.utils
 from nacl.pwhash import argon2id
 from pathlib import Path
 import cryptonite_parser
+from rich.prompt import Prompt
 import os
 
 
@@ -51,7 +52,7 @@ def save_data_to_file(data: str, prompt: str = "Save to file?") -> None:
 
 def encrypt_file(filename: str = "", key: bytes = None) -> bytes:
     """Encrypt a file and save the result."""
-    key = key or (generate_key() if yes_no("Generate a key?") else ask_key())
+    key = key or (generate_key() if yes_no("Generate a key?") else ask_key(ask_load_key=True))
     
     filename = filename or input("Filename: ")
     while not Path(filename).exists():
@@ -74,12 +75,12 @@ def bytes_to_c_array(data: bytes) -> str:
     return ', '.join(f'0x{b:02x}' for b in data)
 
 
-def ask_key() -> bytes:
+def ask_key(ask_generate_key: bool = False) -> bytes:
     """Ask the user for a key, either by generating or loading it."""
-    if yes_no("Generate a key?"):
+    if ask_generate_key and yes_no("Generate a key?"):
         return generate_key()
 
-    if yes_no("Load key from file?"):
+    if yes_no("Load key from file?") :
         filename = input("Filename: ")
         if not Path(filename).exists():
             print("File doesn't exist.")
@@ -96,18 +97,12 @@ def ask_key() -> bytes:
         key_hex = input("Invalid hex. Enter key (hex): ")
     return bytes.fromhex(key_hex)
 
-
-def encrypt_data(data: bytes, key: bytes) -> bytes:
-    """Encrypt data using the given key."""
-    box = nacl.secret.SecretBox(key)
-    return box.encrypt(data)
-
-
 def decrypt_data(data: bytes, key: bytes, ask_save: bool = False) -> bytes:
     """Decrypt data and optionally save the result."""
     box = nacl.secret.SecretBox(key)
     try:
         decrypted = box.decrypt(data)
+        print(decrypted.decode())
     except nacl.exceptions.CryptoError:
         print("Decryption failed. Invalid data.")
         return None
@@ -116,10 +111,28 @@ def decrypt_data(data: bytes, key: bytes, ask_save: bool = False) -> bytes:
         save_data_to_file(decrypted.decode(), prompt="Save decrypted data to file?")
     return decrypted
 
+def decrypt_file(file_path: str = "", key: bytes = None) -> None:
+    """Decrypt a file and write the decrypted data."""
+    if not file_path:
+        file_path = input("Enter the path of the encrypted file: ")
+    if not key:
+        key = ask_key()
+
+    data = read_file(file_path)
+    decrypted_data = decrypt_data(data, key)
+
+    if decrypted_data:
+        output_file = file_path.replace('.encrypted', '')
+        write_to_file(output_file, decrypted_data)
+        print(f"Decrypted data written to {output_file}")
+    else:
+        print("Failed to decrypt the file.")
+
 
 def encrypt_phrase(phrase: str = "", key: bytes = None) -> bytes:
     """Encrypt a phrase and optionally save the result."""
-    key = key or ask_key()
+    key = key or ask_key(ask_load_key=True)
+    phrase = phrase or input("Phrase: ")
     encrypted_data = encrypt_data(phrase.encode("utf-8"), key)
 
     print(f"Encrypted phrase (hex): {encrypted_data.hex()}")
@@ -128,9 +141,16 @@ def encrypt_phrase(phrase: str = "", key: bytes = None) -> bytes:
     return encrypted_data
 
 
+def encrypt_data(data: bytes, key: bytes) -> bytes:
+    """Encrypt data using the given key."""
+    box = nacl.secret.SecretBox(key)
+    return box.encrypt(data)
+
+
+
 def decrypt_phrase(encrypted_data: str = "", key: bytes = None) -> bytes:
     """Decrypt an encrypted phrase and optionally save the result."""
-    key = ask_key()
+    key = key if key else ask_key()
     encrypted_data = bytes.fromhex(input("Enter encrypted phrase (hex): "))
     decrypted_data = decrypt_data(encrypted_data, key)
 
@@ -182,7 +202,7 @@ def shellcode_c_crypter(shellcode_filename: str = "", key: bytes = None, output_
 
 
 def create_c_template(encrypted_data_array: str, key_array: str, platform: str = "") -> str:
-    """Generate C code template for executing shellcode."""
+    """Generate C code template for executing encrypted shellcode."""
     platform = platform or input("Platform (windows/linux): ").lower()
     if platform not in ["windows", "linux"]:
         print("Invalid platform. Defaulting to Windows.")
@@ -240,12 +260,14 @@ int main() {{
 """
 
 def compile_c_to_exe(filename: str, platform: str = "", compiler="", options="", output: str = "out") -> bool:
+    """Compile generated c file to executable."""
     platform = platform.lower()
     if platform == "windows":
         compiler = "x86_64-w64-mingw32-gc"
     else:
         compiler = "gcc"
-    os.system(f"{compiler} {filename} -o {output}{'.exe' if platform == 'windows' else ''} {options}")
+    success = os.system(f"{compiler} {filename} -o {output}{'.exe' if platform == 'windows' else ''} {options}")
+    return True if success == 1 else False
 
 def input_file() -> str:
     """Prompt user for a filename and check if it exists."""
@@ -254,6 +276,17 @@ def input_file() -> str:
         if Path(filename).exists():
             return filename
         print("File does not exist.")
+
+def enter_filename(prompt: str = "Enter filename: ") -> str:
+    """Prompt user for a filename and ensure it's valid."""
+    while True:
+        filename = Prompt.ask(f"[bold blue]{prompt}[/bold blue]")
+        if Path(filename).exists():
+            if yes_no(f"[yellow]{filename} already exists. Overwrite?[/yellow]"):
+                return filename
+            else:
+                continue
+        return filename
 
 
 def main() -> None:
