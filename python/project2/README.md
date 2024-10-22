@@ -94,18 +94,24 @@ To compile the generated C code into an executable, specify the compiler, option
 compile_c_to_exe("crypted.c", platform="windows", compiler="x86_64-w64-mingw32-gcc", options="-lsodium -static")
 ```
 
-## Example Commands
+## Getting started
 Run the main script to start using Cryptonite:
 
 ```bash
 python cryptonite.py
 ```
 
+or
+```bash
+python cryptonite -i
+```
+
+to use the interface
+
 Follow the prompts to encrypt/decrypt files or phrases, generate keys, and more.
 # License
 
 This project is licensed under the MIT License.
-Contributions
 
 Contributions are welcome! Feel free to open issues or submit pull requests.
 Acknowledgments
