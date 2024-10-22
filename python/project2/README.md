@@ -1,20 +1,19 @@
-
 # Cryptonite: Shellcode Encryption and Decryption
 
-Cryptonite is a Python-based utility for encrypting and decrypting shellcode, leveraging the NaCl (libsodium) library for cryptographic operations. It allows users to generate keys, save and load them, and create C templates for executing encrypted shellcode.
+Cryptonite is a Python-based utility for encrypting and decrypting shellcode, leveraging the NaCl (libsodium) library for cryptographic operations. It supports file and phrase encryption/decryption, key generation, and C code template generation for executing encrypted shellcode. The tool provides both CLI and GUI interfaces and is compatible with Windows and Linux platforms.
 ## Features
 
-- Generate random encryption keys.
-- Encrypt and decrypt files and phrases.
-- Save and load keys from files.
-- Create C code templates for executing encrypted shellcode.
-- Support for both Windows and Linux platforms.
+* Generate random encryption keys or derive keys from passwords using Argon2.
+* Encrypt and decrypt files, phrases, or shellcode.
+* Save and load keys from files.
+* Create C code templates for executing encrypted shellcode.
+* Support for both Windows and Linux platforms.
 
 ## Prerequisites
 
-- Python 3.x
-- Required libraries:
-    - pynacl
+* Python 3.x
+* Required libraries:
+    * pynacl
 
 You can install the required libraries using pip:
 
@@ -22,93 +21,70 @@ You can install the required libraries using pip:
 pip install pynacl
 ```
 
-## Usage
-### Encrypting a File
+##Usage
 
-To encrypt a file, run the script and follow the prompts:
-1. Specify the file to encrypt.
-2. Choose to generate a new key or load an existing one.
-3. The encrypted file will be saved with the .encrypted extension.
+Cryptonite provides both a command-line interface (CLI) and a graphical user interface (GUI).
 
-```python
-encrypt_file()
-```
-### Encrypting a Phrase
+### Command-Line Interface (CLI)
 
-To encrypt a phrase:
+You can use the CLI to encrypt, decrypt, generate keys, and create C shellcode templates. The CLI offers several subcommands like encrypt, decrypt, and generate-key.
 
-1. Specify the phrase to encrypt.
-2. Choose to generate a new key or load an existing one.
-3. The encrypted phrase will be saved to a file.
-```python
-encrypt_phrase()
-```
-### Decrypting a File
+To start the CLI, run:
 
-To decrypt an encrypted file, follow similar steps:
-
-1. Provide the encrypted file.
-2. Choose a key.
-3. The decrypted data can be saved to a file.
-
-```python
-decrypt_data()
+```bash
+python cryptonite.py [options]
 ```
 
-### Decrypting a Phrase
+## Encrypting Data or Files ##
 
-To decrypt an encrypted phrase:
+To encrypt a phrase or a file:
 
-1. Input the encrypted data in hex format.
-2. Choose a key.
-3. The decrypted phrase can be saved to a file.
-
-```python
-decrypt_phrase()
+```bash
+python cryptonite.py encrypt [-f FILE] [-p PASSWORD] [--salt SALT] [--shellcode-file FILE]
 ```
 
-### Generate Key from Password
+* `-f, --file`: File to encrypt.
+* `-p, --password`: Optional password for key derivation.
+* `--salt`: Optional salt for password-based key generation (hex format).
+* `--shellcode-file`: Specify a file containing shellcode to encrypt.
 
-You can generate a key from a password using Argon2:
+## Decrypting Data or Files ##
 
-```python
-generate_key_from_password()
+To decrypt a phrase or a file:
+
+```bash
+python cryptonite.py decrypt [-f FILE] [-p PASSWORD] [--salt SALT]
 ```
 
-### Creating C Template for Shellcode
-To encrypt shellcode and generate a C template:
+* `-f, --file`: File to decrypt.
+* `-p, --password`: Optional password for key derivation.
+* `--salt`: Optional salt for password-based key generation (hex format).
 
-1. Specify the shellcode filename.
-2. Choose a key.
-3. The C template will be saved as crypted.c.
+## Key Generation ##
 
-```python
-shellcode_c_crypter()
+To generate a new key:
+
+```bash
+python cryptonite.py generate-key [-p PASSWORD] [--salt SALT]
 ```
 
-### Compiling C to Executable
+* `-p, --password`: Optional password for deriving the key.
+* `--salt`: Optional salt for password-based key generation (hex format).
 
-To compile the generated C code into an executable, specify the compiler, options, and output filename:
+## Getting Started
 
-```python
-compile_c_to_exe("crypted.c", platform="windows", compiler="x86_64-w64-mingw32-gcc", options="-lsodium -static")
-```
-
-## Getting started
-Run the main script to start using Cryptonite:
+To start using Cryptonite, run the main script:
 
 ```bash
 python cryptonite.py
 ```
 
-or
+Or, use the GUI with:
+
 ```bash
-python cryptonite -i
+python cryptonite.py -i
 ```
 
-to use the interface
-
-Follow the prompts to encrypt/decrypt files or phrases, generate keys, and more.
 # License
 
 This project is licensed under the MIT License.
