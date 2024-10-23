@@ -195,6 +195,8 @@ def valid_hex(hex_string: str) -> bool:
 def shellcode_c_crypter(shellcode_filename: str = "", key: bytes = None, platform: str = "", output_filename = "crypted.c") -> str:
     """Encrypt shellcode and generate a C template."""
     print("[!] Recommended payload is staged reverse shell.\n")
+    if str(shellcode_filename)[-4:] == ".exe":
+        print("Warning: Exe files not supported. Use binary shellcode")
     key = key or generate_key()
     shellcode_filename = shellcode_filename or input_file()
 
