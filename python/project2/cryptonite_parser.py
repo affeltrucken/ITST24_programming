@@ -13,7 +13,7 @@ def add_parser() -> argparse.ArgumentParser:
     """Sets up the argument parser for command-line options."""
     parser = argparse.ArgumentParser(
         prog="Cryptonite",
-        description="Symmetric encrypter/decrypter, key generator",
+        description="Symmetric encrypter/decrypter, key generator, and cryptor",
     )
 
     # Define the possible arguments
@@ -27,7 +27,7 @@ def add_parser() -> argparse.ArgumentParser:
     parser.add_argument("-g", "--generate-key", action="store_true", help="Generate a encryption key")
     parser.add_argument("-p", "--password", help="Password for generating a key using PBKDF2")
     parser.add_argument("--salt", help="Optional salt for key generation in hex format", type=str)
-    parser.add_argument("--shellcode-file", type=Path, help="Shellcode file to encrypt")
+    parser.add_argument("--encrypt-shellcode", type=Path, help="Shellcode file to encrypt (binary)")
     parser.add_argument("--platform", choices=["windows", "linux"], help="Specify the target platform for shellcode encryption")
 
     return parser
@@ -64,18 +64,18 @@ def validate_args(args):
     if args.encrypt and args.decrypt:
         raise argparse.ArgumentTypeError(ERROR_BOTH_ENCRYPT_AND_DECRYPT)
 
-    if args.encrypt and not (args.data or args.file or args.shellcode_file):
+    if args.encrypt and not (args.data or args.file or args.encrypt_shellcode):
         raise argparse.ArgumentTypeError(ERROR_MISSING_DATA_OR_FILE)
 
 def parse_arguments(parser) -> dict:
     """Handles the entire parsing flow, returning a validated config."""
     args = parser.parse_args()
 
-    if not args.data and not args.file and not args.generate_key and not args.password and not args.shellcode_file and not args.interface:
+    if not args.data and not args.file and not args.generate_key and not args.password and not args.encrypt_shellcode and not args.interface:
         parser.error("You must provide either 'data', a file, a password, or a shellcode file.")
 
     key = handle_password_key(args)
-    data = read_input_data(args) if not args.shellcode_file else None
+    data = read_input_data(args) if not args.encrypt_shellcode else None
 
     validate_args(args)
 
@@ -86,7 +86,7 @@ def parse_arguments(parser) -> dict:
         "decrypt": args.decrypt,
         "save_output": args.save_output,
         "interface": args.interface,
-        "shellcode_file": args.shellcode_file,
+        "shellcode_file": args.encrypt_shellcode,
         "platform": args.platform
     }
 
@@ -110,10 +110,7 @@ def main():
     if config["encrypt"]:
         output = cryptonite.encrypt_data(config["data"], config["key"]).decode("utf-8")
     elif config["decrypt"]:
-        try:
-            output = cryptonite.decrypt_data(config["data"], config["key"]).decode("utf-8")
-        except (AttributeError, InvalidToken):
-            sys.exit("Invalid token or decryption error.")
+        output = cryptonite.decrypt_data(config["data"], config["key"]).decode("utf-8")
     else:
         output = config["key"]
 
