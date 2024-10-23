@@ -1,8 +1,7 @@
 import argparse
 import sys
-from cryptography.fernet import InvalidToken
 import cryptonite
-import gui
+import cryptonite_gui
 from pathlib import Path
 from sys import argv
 
@@ -22,15 +21,17 @@ def add_parser() -> argparse.ArgumentParser:
     parser.add_argument("data", nargs="?", help="Data to encrypt/decrypt")
     parser.add_argument("-f", "--file", type=Path, help="Use file as input data")
     parser.add_argument("-k", "--key", help="Encryption/decryption key")
-    parser.add_argument("-s", "--save-output", type=Path, help="Save output to specified file")
+    parser.add_argument("-o", "--save-output", type=Path, help="Save output to specified file")
     parser.add_argument("-e", "--encrypt", action="store_true", help="Encrypt the provided data")
     parser.add_argument("-d", "--decrypt", action="store_true", help="Decrypt the provided data")
-    parser.add_argument("-g", "--generate-key", action="store_true", help="Generate a Fernet key")
+    parser.add_argument("-g", "--generate-key", action="store_true", help="Generate a encryption key")
     parser.add_argument("-p", "--password", help="Password for generating a key using PBKDF2")
     parser.add_argument("--salt", help="Optional salt for key generation in hex format", type=str)
     parser.add_argument("--shellcode-file", type=Path, help="Shellcode file to encrypt")
+    parser.add_argument("--platform", choices=["windows", "linux"], help="Specify the target platform for shellcode encryption")
 
     return parser
+
 
 def handle_password_key(args) -> str:
     """Generates or retrieves the encryption key."""
@@ -62,19 +63,19 @@ def validate_args(args):
     """Checks for argument validity."""
     if args.encrypt and args.decrypt:
         raise argparse.ArgumentTypeError(ERROR_BOTH_ENCRYPT_AND_DECRYPT)
-    
-    if args.encrypt and not (args.data or args.file):
+
+    if args.encrypt and not (args.data or args.file or args.shellcode_file):
         raise argparse.ArgumentTypeError(ERROR_MISSING_DATA_OR_FILE)
 
 def parse_arguments(parser) -> dict:
     """Handles the entire parsing flow, returning a validated config."""
     args = parser.parse_args()
 
-    if not args.data and not args.file and not args.generate_key and not args.password:
-        parser.error("You must provide either 'data', a file, or a password.")
+    if not args.data and not args.file and not args.generate_key and not args.password and not args.shellcode_file and not args.interface:
+        parser.error("You must provide either 'data', a file, a password, or a shellcode file.")
 
     key = handle_password_key(args)
-    data = read_input_data(args)
+    data = read_input_data(args) if not args.shellcode_file else None
 
     validate_args(args)
 
@@ -85,28 +86,29 @@ def parse_arguments(parser) -> dict:
         "decrypt": args.decrypt,
         "save_output": args.save_output,
         "interface": args.interface,
-        "shellcode_file": args.shellcode_file
+        "shellcode_file": args.shellcode_file,
+        "platform": args.platform
     }
+
 
 def main():
     """Main entry point for the command-line interface."""
     parser = add_parser()
 
     if len(argv) == 1:
-        gui.main()
+        cryptonite_gui.main()
 
     config = parse_arguments(parser)
 
     if config["interface"]:
-        gui.main()
+        cryptonite_gui.main()
 
     output = ""
-
+    if config["shellcode_file"]:
+        cryptonite.shellcode_c_crypter(shellcode_filename=config["shellcode_file"], key=config["key"], platform=config["platform"], output_filename=config["save_output"])
+        sys.exit()
     if config["encrypt"]:
-        if config["shellcode_file"]:
-            cryptonite.shellcode_c_crypter(config["shellcode_file"], config["key"])
-        else:
-            output = cryptonite.encrypt_data(config["data"], config["key"]).decode("utf-8")
+        output = cryptonite.encrypt_data(config["data"], config["key"]).decode("utf-8")
     elif config["decrypt"]:
         try:
             output = cryptonite.decrypt_data(config["data"], config["key"]).decode("utf-8")
