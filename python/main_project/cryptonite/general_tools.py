@@ -29,16 +29,14 @@ def input_file(prompt_text: str = "", ask_overwrite: bool = True, file_exists_re
         filename = Prompt.ask(f"Filename{f' ({prompt_text})' if prompt_text else ''}")
         file_path = Path(filename)
         
-        # File does not exist
         if not file_path.exists():
             if file_exists_required:
                 console.print("File does not exist.")
                 continue
             return filename
 
-        # File exists
-        if not ask_overwrite:  # Overwrite is not permitted
-            return filename  # Just return the filename since we know it exists
+        if not ask_overwrite:
+            return filename
         elif yes_no(f"{filename} already exists. Overwrite?"):
             return filename
 
