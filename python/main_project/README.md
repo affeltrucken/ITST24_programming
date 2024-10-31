@@ -1,28 +1,20 @@
-# Toolbox
+# Info
 
-Bygg en toolbox bestående av flera Python-script som kan användas för penetrationstester eller inom IT-säkerhet.
-Använd dig av de tekniker och paket som vi gått igenom under kursen eller kunskap du har sedan tidigare.
+Skripten är testade med:
+- pynacl: 1.5.0
+- rich: 13.9.2
+- argparse: 1.4.0
+- dnsdumpster: 0.10
+- openpyxl: 3.1.5
 
-## Krav för varje verktyg:
+och Python 3.12.5 py Windows 11.
 
-* Verktyget ska använda minst ett externt Python-bibliotek (t.ex. requests, shodan, cryptography, scapy, nmap osv).
-* Verktyget ska använda argparse och kunna köras med argument från terminalen (undantag om verktyget inte behöver ta någon input från användaren)
-* Verktyget ska innehålla en README-fil med instruktioner om hur verktyget används, exempelkörningar och kända begränsningar.
+Cryptonite och Subdomain_enum innehåller båda en GUI, och CLI parser. Du kan komma åt skripten och READMEs genom mapparna
+eller kör dom från main verktyget här.
 
-## För Godkänt krävs:
+Cryptonite och Subdomain enum har båda lite mer avancerade funktioner, ex. att generera och kompilera en .c fil som krypterar shellcode och sedan dekrypterar och kör koden under runtime, eller att SDE genererar en lista med subdomäner utifrån en inofficiel DNSDumpster API, och sedan testar mot dem m.h.a en ThreadPool (dock är den seg).
 
-* Minst tre verktyg från olika kategorier (viktigt: Du får använda dina verktyg från laborationerna. Men se till att de följer kraven för uppgiften)
-* Verktygen ska innehålla tydliga instruktioner för användning
-* Koden ska innehålla grundläggande felhantering (t.ex. try-except), inmatningsvalidering och vara strukturerad i funktioner.
+Jag valde att fokusera på dessa två verktyg mer då jag hade lite idétorka och kända att jag hade intressanta funktioner som visade min kunskap väl.
 
-## För Väl Godkänt:
 
-* Inkludera ytterligare/mer avancerade funktioner såsom logging, rapportgenerering eller ett mainscript som importerar de andra skripten och interaktivt låter användaren köra dem
-* Implementera fler än tre verktyg för att visa din kunskap av fler Python-paket
-* Verktygen ska vara väl dokumenterade
-
-## Inlämning:
-
-Lägg upp allting i ett Github repo. Skapa antingen en readme fil för varje verktyg (separera med folders) eller en readme med alla verktyg listade.
-
-Se till att repot är public (eller bjud in mig om du vill hålla det privat) och lämna länken som inlämning.
+**OBS: VINS la jag till bara för att utöka main skriptet, det är bara inte en del av inlämningen.**
