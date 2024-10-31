@@ -1,5 +1,6 @@
 
-from tools.general_tools import yes_no, write_to_file, input_file
+#!/usr/bin/python3
+from .general_tools import yes_no, write_to_file, input_file
 from dnsdumpster.DNSDumpsterAPI import DNSDumpsterAPI
 from rich.console import Console
 from rich.prompt import Prompt
@@ -9,6 +10,7 @@ import concurrent.futures
 
 import sys
 import requests
+from .xls_generator import generate_spreadsheet
 
 BANNER = """
   ___ ___  ___ 
@@ -64,7 +66,7 @@ def make_threaded_requests(urls: list[str]) -> list[tuple[str, int]]:
                 responses.append((url, 0))
     return responses
 
-def ask_save_output(prompt="Save output?") -> str:
+def ask_save_output(prompt: str ="Save output?") -> str:
     if yes_no(prompt):
         filename = input_file(ask_overwrite=True, file_exists_required=False)
         return filename
@@ -178,6 +180,9 @@ def handle_choice(option: str, domain: str, subdomain_list: list[str]) -> tuple[
             print(f"Testing {len(url_list)} subdomains...")
             request_list = make_threaded_requests(url_list)
             print_subdomains(request_list)
+            
+            if yes_no("Save the results to spreadsheet"):
+                generate_spreadsheet(domain, request_list)
         case "5":
             print(subdomain_list[0:100])
         case "0":

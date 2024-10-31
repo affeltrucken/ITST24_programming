@@ -10,7 +10,7 @@ def read_file(filename: str, read_mode: str = "r") -> bytes:
     
 def yes_no(prompt: str) -> bool:
     while True:
-        answer = Prompt.ask(f"{prompt} (y/n): ").strip().lower()
+        answer = Prompt.ask(f"{prompt} (y/n)").strip().lower()
         if answer in ['y', 'n']:
             return answer == 'y'
         console.print("Please enter 'y' or 'n'.")
@@ -26,22 +26,22 @@ from pathlib import Path
 
 def input_file(prompt_text: str = "", ask_overwrite: bool = True, file_exists_required: bool = True) -> str:
     while True:
-        filename = Prompt.ask(f"Filename{f' ({prompt_text})' if prompt_text else ''}: ")
+        filename = Prompt.ask(f"Filename{f' ({prompt_text})' if prompt_text else ''}")
         file_path = Path(filename)
         
+        # File does not exist
         if not file_path.exists():
             if file_exists_required:
                 console.print("File does not exist.")
                 continue
-            else:
-                return filename
+            return filename
 
-        elif not file_exists_required or ask_overwrite:
-            if not ask_overwrite or yes_no(f"{filename} already exists. Overwrite?"):
-                return filename
-        else:
-            console.print("File exists and overwrite not permitted.")
-            continue
+        # File exists
+        if not ask_overwrite:  # Overwrite is not permitted
+            return filename  # Just return the filename since we know it exists
+        elif yes_no(f"{filename} already exists. Overwrite?"):
+            return filename
+
 
 
 def main():

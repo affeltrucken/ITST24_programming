@@ -11,9 +11,9 @@ Cryptonite is a Python-based utility for encrypting and decrypting shellcode, le
 
 ## Prerequisites
 
-* Python 3.x
-* Required libraries:
-    * pynacl
+- **Tested with Python 3.12.5**
+- **Required libraries**:
+    - pynacl
 
 You can install the required libraries using pip:
 
@@ -32,7 +32,7 @@ You can use the CLI to encrypt, decrypt, generate keys, and create C shellcode t
 To start the CLI, run:
 
 ```bash
-python cryptonite.py [options]
+python cryptonite_main.py [options]
 ```
 
 ## Encrypting Data or Files ##
@@ -40,7 +40,7 @@ python cryptonite.py [options]
 To encrypt a phrase or a file:
 
 ```bash
-python cryptonite.py encrypt [-f FILE] [-p PASSWORD] [--salt SALT] [--shellcode-file FILE]
+python cryptonite_main.py encrypt [-f FILE] [-p PASSWORD] [--salt SALT] [--shellcode-file FILE]
 ```
 
 * `-f, --file`: File to encrypt.
@@ -53,7 +53,7 @@ python cryptonite.py encrypt [-f FILE] [-p PASSWORD] [--salt SALT] [--shellcode-
 To decrypt a phrase or a file:
 
 ```bash
-python cryptonite.py decrypt [-f FILE] [-p PASSWORD] [--salt SALT]
+python cryptonite_main.py decrypt [-f FILE] [-p PASSWORD] [--salt SALT]
 ```
 
 * `-f, --file`: File to decrypt.
@@ -65,7 +65,7 @@ python cryptonite.py decrypt [-f FILE] [-p PASSWORD] [--salt SALT]
 To generate a new key:
 
 ```bash
-python cryptonite.py generate-key [-p PASSWORD] [--salt SALT]
+python cryptonite_main.py generate-key [-p PASSWORD] [--salt SALT]
 ```
 
 * `-p, --password`: Optional password for deriving the key.
@@ -76,13 +76,13 @@ python cryptonite.py generate-key [-p PASSWORD] [--salt SALT]
 To start using Cryptonite, run the main script:
 
 ```bash
-python cryptonite.py
+python cryptonite_main.py
 ```
 
 Or, use the GUI with:
 
 ```bash
-python cryptonite.py -i
+python cryptonite_main.py -i
 ```
 
 # License
