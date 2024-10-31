@@ -1,3 +1,5 @@
+READ WRITEUP [HERE](https://blog.aldinsmajlovic.se/blog/python-decrypter-encrypter-shellcode)
+
 # Cryptonite: Shellcode Encryption and Decryption
 
 Cryptonite is a Python-based utility for encrypting and decrypting shellcode, leveraging the NaCl (libsodium) library for cryptographic operations. It supports file and phrase encryption/decryption, key generation, and C code template generation for executing encrypted shellcode. The tool provides both CLI and GUI interfaces and is compatible with Windows and Linux platforms.
