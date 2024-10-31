@@ -1,6 +1,6 @@
 import argparse
 import sys
-import cryptonite
+import cryptonite_main
 import cryptonite_gui
 from pathlib import Path
 from sys import argv
@@ -37,19 +37,19 @@ def handle_password_key(args) -> str:
     """Generates or retrieves the encryption key."""
     if args.password:
         salt_hex = validate_salt(args)
-        key = cryptonite.generate_key_from_password(args.password, salt_hex).decode("ascii")
+        key = cryptonite_main.generate_key_from_password(args.password, salt_hex).decode("ascii")
         return key
     return args.key
 
 def validate_salt(args) -> bytes:
     """Validates or generates the salt for key generation."""
     if args.salt:
-        if cryptonite.valid_hex(args.salt):
+        if cryptonite_main.valid_hex(args.salt):
             return bytes.fromhex(args.salt)
         else:
             raise ValueError(ERROR_INVALID_SALT)
     else:
-        salt = cryptonite.generate_salt()
+        salt = cryptonite_main.generate_salt()
         print(f"Generated random salt: {salt.hex()}")
         return salt
 
@@ -91,7 +91,7 @@ def parse_arguments(parser) -> dict:
     }
 
 
-def main():
+def cryptonite_parser_main():
     """Main entry point for the command-line interface."""
     parser = add_parser()
 
@@ -105,19 +105,22 @@ def main():
 
     output = ""
     if config["shellcode_file"]:
-        cryptonite.shellcode_c_crypter(shellcode_filename=config["shellcode_file"], key=config["key"], platform=config["platform"], output_filename=config["save_output"])
+        cryptonite_main.shellcode_c_crypter(shellcode_filename=config["shellcode_file"], key=config["key"], platform=config["platform"], output_filename=config["save_output"])
         sys.exit()
     if config["encrypt"]:
-        output = cryptonite.encrypt_data(config["data"], config["key"]).decode("utf-8")
+        output = cryptonite_main.encrypt_data(config["data"], config["key"]).decode("utf-8")
     elif config["decrypt"]:
-        output = cryptonite.decrypt_data(config["data"], config["key"]).decode("utf-8")
+        output = cryptonite_main.decrypt_data(config["data"], config["key"]).decode("utf-8")
     else:
         output = config["key"]
 
     print(output)
 
     if config["save_output"]:
-        cryptonite.write_to_file(config["save_output"], output)
+        cryptonite_main.write_to_file(config["save_output"], output)
+
+def main():
+    cryptonite_parser_main()
 
 if __name__ == "__main__":
     main()
