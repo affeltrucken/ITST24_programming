@@ -1,6 +1,7 @@
+#!/usr/bin/python3
 from rich.console import Console
 from rich.prompt import Prompt
-from cryptonite import yes_no, write_to_file, enter_filename, generate_key
+from .general_tools import yes_no, write_to_file, input_file
 
 console = Console()
 
@@ -24,7 +25,7 @@ def generate_encryption_keys(n_of_keys: int) -> list:
 def save_keys_to_file(keys: list):
     """Prompt for a filename and save the keys to that file."""
     if yes_no("Save to file?"):
-        filename = enter_filename()
+        filename = input_file(ask_overwrite=True, file_exists_required=False)
         for key in keys:
             write_to_file(filename, f"{key.hex()}\n", "a")
         console.print("\n[green]Success: Keys saved to file.[/green]")
