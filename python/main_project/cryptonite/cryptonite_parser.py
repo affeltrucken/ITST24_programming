@@ -1,7 +1,8 @@
+#!/usr/bin/python3
 import argparse
 import sys
-import cryptonite_main
-import cryptonite_gui
+from . import cryptonite_main
+from . import cryptonite_gui
 from pathlib import Path
 from sys import argv
 
