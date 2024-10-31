@@ -1,4 +1,5 @@
-import cryptonite_main
+#!/usr/bin/python3
+from . import cryptonite_main
 from rich.console import Console
 from rich.prompt import Prompt
 
@@ -23,7 +24,7 @@ def menu() -> None:
         "5": "Generate random key",
         "6": "Generate key from password (PBKDF2)",
         "7": "Shellcode crypter (C)",
-        "8": "Compile C file to executable",
+        "8": "Compile C file to executable ",
         "0": "Exit"
     }
     
@@ -53,6 +54,7 @@ def handle_choice(option: str):
         case "7":
             cryptonite_main.shellcode_c_crypter()
         case "8":
+            console.print("[bold red]This feature is not reliable and might not work for your config. Manual compilation is recommended.[/bold red]")
             cryptonite_main.compile_c_file_to_executable()
         case "0":
             console.print("[bold red]Exiting...[/bold red]")
