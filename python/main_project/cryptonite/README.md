@@ -23,7 +23,7 @@ You can install the required libraries using pip:
 pip install pynacl
 ```
 
-##Usage
+## Usage
 
 Cryptonite provides both a command-line interface (CLI) and a graphical user interface (GUI).
 
